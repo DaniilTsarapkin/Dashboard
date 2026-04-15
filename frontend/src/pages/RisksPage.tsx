@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine,
-  ResponsiveContainer,
+  ResponsiveContainer, LineChart, Line,
 } from 'recharts'
 import { useDashboard } from '../store'
 import { getCharts } from '../api'
@@ -35,24 +35,24 @@ export default function RisksPage() {
 
   const waste = snapshot.m16_waste
   const wasteRows = [
-    { label: '🏗 Инфраструктурные ожидания', hours_raw: waste.infra_wait_hours },
-    { label: '⏳ Блокировки', hours_raw: waste.blockage_hours },
-    { label: '🔁 Переделки', hours_raw: waste.rework_hours },
+    { label: 'Инфраструктурные ожидания', hours_raw: waste.infra_wait_hours },
+    { label: 'Блокировки', hours_raw: waste.blockage_hours },
+    { label: 'Переделки', hours_raw: waste.rework_hours },
   ]
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6">🏢 Риски — организационное здоровье</h1>
+      <h1 className="text-xl font-bold mb-6">Риски — организационное здоровье</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         <MetricCard
-          label="M13 — Концентрация BIC"
+          label="M13 — Systemic Overload Index"
           value={snapshot.m13.value.toFixed(2)}
           metric={snapshot.m13}
           explanation={generateExplanation('M13', snapshot.m13)}
         />
         <MetricCard
-          label="M14 — Концентрация знаний KCR"
+          label="M14 — Knowledge Concentration Risk"
           value={snapshot.m14.value.toFixed(2)}
           metric={snapshot.m14}
           explanation={generateExplanation('M14', snapshot.m14)}
@@ -61,7 +61,7 @@ export default function RisksPage() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M13 — BIC-концентрация по неделям
+          M13 — Systemic Overload Index (weekly)
         </h2>
         <div className="bg-gray-900 rounded-xl p-4">
           <ResponsiveContainer width="100%" height={200}>
@@ -93,12 +93,12 @@ export default function RisksPage() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M15 — Воронка онбординга
+          M15 — Onboarding Efficiency
           {m15_funnel.onboarding_days > 0 && (
             <span className="ml-3 font-normal text-gray-400 normal-case">
               Медиана: <span className="text-white">{m15_funnel.onboarding_days.toFixed(1)} дн.</span>
               {m15_funnel.step3 > 0 && (
-                <span className="ml-1 text-gray-500">({m15_funnel.step3} уч.)</span>
+                <span className="ml-1 text-gray-400">({m15_funnel.step3} уч.)</span>
               )}
             </span>
           )}
@@ -130,7 +130,7 @@ export default function RisksPage() {
         </div>
         {m15_funnel.step3 > 0 && m15_funnel.step3 < 5 && (
           <div className="mt-3 p-3 rounded-lg border border-yellow-600/40 bg-yellow-900/20 flex items-start gap-2">
-            <span className="text-yellow-400 flex-shrink-0">⚠️</span>
+            <span className="text-yellow-400 flex-shrink-0"></span>
             <div className="text-xs text-gray-400">
               Менее 5 новых участников ({m15_funnel.step3}) —
               метрика статистически неустойчива.
@@ -140,17 +140,54 @@ export default function RisksPage() {
         )}
       </section>
 
+      {(() => {
+        const kcrHigh = snapshot.m14.value > 0.2
+        const hasFunnel = m15_funnel.step1 > 0
+        const feedbackRate = hasFunnel ? m15_funnel.step2 / m15_funnel.step1 : 1
+        const feedbackLow = feedbackRate < 0.5
+        const mergeRate = hasFunnel ? m15_funnel.step3 / m15_funnel.step1 : 1
+        const riskModules = m14_modules.length
+
+        if (!kcrHigh || !hasFunnel || !feedbackLow) return null
+
+        return (
+          <div className="mb-6 p-3 rounded-lg border border-yellow-600/40 bg-yellow-900/20 flex items-start gap-2">
+            <span className="text-yellow-400 text-lg flex-shrink-0"></span>
+            <div>
+              <div className="text-sm font-semibold text-yellow-400 mb-0.5">
+                Концентрация знаний тормозит онбординг
+              </div>
+              <div className="text-xs text-gray-400">
+                {riskModules > 0 && (
+                  <>{riskModules} {riskModules === 1 ? 'модуль зависит' : riskModules < 5 ? 'модуля зависят' : 'модулей зависят'} от
+                  одного эксперта (M14 = {(snapshot.m14.value * 100).toFixed(0)}%). </>
+                )}
+                Из {m15_funnel.step1} новых участников только {m15_funnel.step2} ({(feedbackRate * 100).toFixed(0)}%)
+                получили обратную связь
+                {m15_funnel.step3 > 0
+                  ? <> и лишь {m15_funnel.step3} ({(mergeRate * 100).toFixed(0)}%) дошли до принятого PR.</>
+                  : <>, ни один не дошёл до принятого PR.</>
+                }
+                {m15_funnel.step1 - m15_funnel.step2 > 0 && (
+                  <> {m15_funnel.step1 - m15_funnel.step2} {m15_funnel.step1 - m15_funnel.step2 === 1 ? 'новичок не получил' : 'новичков не получили'} ответа на свой PR.</>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M14 — Концентрация знаний по модулям
+          M14 — Knowledge Concentration Risk (modules)
         </h2>
         <div className="bg-gray-900 rounded-xl overflow-hidden">
           {m14_modules.length === 0 ? (
-            <div className="p-4 text-gray-500 text-sm">Нет данных о файловых изменениях</div>
+            <div className="p-4 text-gray-400 text-sm">Нет данных о файловых изменениях</div>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-500 text-xs border-b border-gray-800">
+                <tr className="text-gray-400 text-xs border-b border-gray-800">
                   <th className="text-left px-4 py-2">Модуль</th>
                   <th className="text-right px-4 py-2">KCR</th>
                   <th className="text-left px-4 py-2 w-40">Топ авторы</th>
@@ -186,10 +223,78 @@ export default function RisksPage() {
         </div>
       </section>
 
+      {(() => {
+        const dualData = weekly.labels.map((l, i) => ({
+          week: l,
+          m06: weekly.m06[i],
+          m09: weekly.m09[i],
+        }))
+        const hasSignal = snapshot.m06.value < 0.5 || snapshot.m09.value > 0.15
+        return (
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Связь требований и переделок (M06 × M09)
+            </h2>
+            <div className="bg-gray-900 rounded-xl p-4">
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={dualData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                  <YAxis domain={[0, 1.05]} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                  <Tooltip
+                    contentStyle={{ background: '#1e293b', border: 'none' }}
+                    formatter={(v) => Number(v).toFixed(3)}
+                  />
+                  <ReferenceLine y={0.5} stroke="#e74c3c" strokeDasharray="4 4" strokeOpacity={0.5} />
+                  <Line type="monotone" dataKey="m06" stroke="#3498db" strokeWidth={2} dot={false} name="M06 Requirements Clarity" />
+                  <Line type="monotone" dataKey="m09" stroke="#e67e22" strokeWidth={2} dot={false} name="M09 Rework Rate" />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-[#3498db]" /> M06 Requirements Clarity</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-[#e67e22]" /> M09 Rework Rate</div>
+              </div>
+              {hasSignal && (() => {
+                const lowM06 = snapshot.m06.value < 0.5
+                const highM09 = snapshot.m09.value > 0.15
+                const reworkHours = snapshot.m16_waste.rework_hours
+                return (
+                  <div className="mt-3 p-3 rounded-lg border border-yellow-600/40 bg-yellow-900/20 flex items-start gap-2">
+                    <span className="text-yellow-400 text-lg flex-shrink-0"></span>
+                    <div>
+                      <div className="text-sm font-semibold text-yellow-400 mb-0.5">
+                        {lowM06 && highM09
+                          ? 'Нестабильные требования приводят к переделкам'
+                          : lowM06
+                          ? 'Низкая ясность требований — риск роста переделок'
+                          : 'Повышенный уровень переделок'}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {lowM06 && (
+                          <>M06 Requirements Clarity = {snapshot.m06.value.toFixed(2)} (ниже порога 0.5) —
+                          в среднем {((1 / snapshot.m06.value) - 1).toFixed(1)} итераций доработок на PR. </>
+                        )}
+                        {highM09 && (
+                          <>M09 Rework Rate = {(snapshot.m09.value * 100).toFixed(1)}% закрытых задач
+                          переоткрыты в течение 14 дней. </>
+                        )}
+                        {reworkHours > 0 && (
+                          <>Суммарные потери от переделок за период: {formatHours(reworkHours)}.</>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          </section>
+        )
+      })()}
+
       {(role === 'Engineering Manager' || role === 'Admin') && (
         <section>
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            M16 — Стоимость потерь
+            M16 — Cost of Process Waste
           </h2>
           <div className="flex items-center gap-3 mb-4">
             <label className="text-sm text-gray-400">Ставка (₽/час):</label>
@@ -203,7 +308,7 @@ export default function RisksPage() {
               className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm text-white w-36 focus:outline-none focus:border-yellow-400"
             />
             {hourlyRate > 0 && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 Итого: {(waste.total_hours * hourlyRate).toLocaleString('ru-RU')} ₽
               </span>
             )}
@@ -211,7 +316,7 @@ export default function RisksPage() {
           <div className="bg-gray-900 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-500 text-xs border-b border-gray-800">
+                <tr className="text-gray-400 text-xs border-b border-gray-800">
                   <th className="text-left px-4 py-2">Категория</th>
                   <th className="text-right px-4 py-2">Часы</th>
                   <th className="text-right px-4 py-2">Доля</th>

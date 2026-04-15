@@ -116,6 +116,7 @@ def save_config(req: ConfigRequest):
             "issue_count": len(bundle.issues),
             "window_start": bundle.window_start.isoformat(),
             "window_end": bundle.window_end.isoformat(),
+            "commit_files_loaded": bool(bundle.commit_files),
         }
     except Exception as e:
         CONFIG_PATH.unlink(missing_ok=True)

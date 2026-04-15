@@ -11,7 +11,7 @@ interface Props {
 
 export default function Sparkline({ labels, values, color = '#3b82f6', refLine }: Props) {
   if (!values.length) {
-    return <div className="h-14 flex items-center justify-center text-xs text-gray-600">нет данных</div>
+    return <div className="h-14 flex items-center justify-center text-xs text-gray-400">нет данных</div>
   }
 
   const data = labels.map((l, i) => ({ week: l, v: values[i] }))

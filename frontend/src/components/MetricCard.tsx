@@ -31,7 +31,7 @@ export default function MetricCard({ label, value, metric, explanation }: Props)
         <span className="text-lg font-bold" style={{ color: arrowColor }}>{arrow}</span>
       </div>
       {explanation && (
-        <p className="text-xs text-gray-500 mt-2">{explanation}</p>
+        <p className="text-xs text-gray-400 mt-2">{explanation}</p>
       )}
     </div>
   )

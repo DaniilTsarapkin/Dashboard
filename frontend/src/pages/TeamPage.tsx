@@ -84,17 +84,17 @@ export default function TeamPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6">💬 Команда — взаимодействие</h1>
+      <h1 className="text-xl font-bold mb-6">Команда — взаимодействие</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         <MetricCard
-          label="M09 — Доля переделок"
+          label="M09 — Rework Rate"
           value={formatPct(snapshot.m09.value)}
           metric={snapshot.m09}
           explanation={generateExplanation('M09', snapshot.m09)}
         />
         <MetricCard
-          label="M06 — Requirements Clarity Score (Ясность требований)"
+          label="M06 — Requirements Clarity Score"
           value={snapshot.m06.value.toFixed(2)}
           metric={snapshot.m06}
           explanation={generateExplanation('M06', snapshot.m06)}
@@ -103,7 +103,7 @@ export default function TeamPage() {
 
       {snapshot.m09.value > 0.15 && snapshot.m06.value < 0.5 && (
         <div className="mt-3 mb-8 p-3 rounded-lg border border-yellow-600/40 bg-yellow-900/20 flex items-start gap-2">
-          <span className="text-yellow-400 text-lg flex-shrink-0">⚠️</span>
+          <span className="text-yellow-400 text-lg flex-shrink-0"></span>
           <div>
             <div className="text-sm font-semibold text-yellow-400 mb-0.5">
               Системная проблема с постановкой задач
@@ -121,11 +121,11 @@ export default function TeamPage() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M14 — Концентрация знаний (KCR тепловая карта)
+          M14 — Knowledge Concentration Risk (KCR heatmap)
         </h2>
         <div className="bg-gray-900 rounded-xl p-4 overflow-auto">
           {heatmap.modules.length === 0 ? (
-            <div className="text-gray-500 text-sm">Нет данных о файловых изменениях</div>
+            <div className="text-gray-400 text-sm">Нет данных о файловых изменениях</div>
           ) : (
             <div>
               <div className="flex gap-px mb-px">
@@ -133,7 +133,7 @@ export default function TeamPage() {
                 {heatmap.authors.map(a => (
                   <div
                     key={a}
-                    className="flex-1 min-w-[40px] text-center text-xs text-gray-500 truncate px-0.5"
+                    className="flex-1 min-w-[40px] text-center text-xs text-gray-400 truncate px-0.5"
                     title={a}
                   >
                     {a.split('/').pop()}
@@ -161,7 +161,7 @@ export default function TeamPage() {
                   })}
                 </div>
               ))}
-              <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
+              <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
                 <div className="h-3 w-24 rounded" style={{
                   background: 'linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c)',
                 }} />
@@ -174,7 +174,7 @@ export default function TeamPage() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M12 — Культура (безопасность среды, по неделям)
+          M12 — Psychological Safety Signal (weekly)
         </h2>
         <div className="bg-gray-900 rounded-xl p-4">
           <ResponsiveContainer width="100%" height={180}>
@@ -221,14 +221,83 @@ export default function TeamPage() {
         </div>
       </section>
 
+      {(() => {
+        const dualData = weekly.labels.map((l, i) => ({
+          week: l,
+          m12: weekly.m12[i],
+          m13: weekly.m13[i],
+        }))
+        const hasSignal = snapshot.m13.value > 0.3 && snapshot.m12.value < 0.7
+        return (
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+              Связь перегрузки и культуры (M13 × M12)
+            </h2>
+            <div className="bg-gray-900 rounded-xl p-4">
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={dualData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis dataKey="week" tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                  <YAxis domain={[0, 1.05]} tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                  <Tooltip
+                    contentStyle={{ background: '#1e293b', border: 'none' }}
+                    formatter={(v) => Number(v).toFixed(3)}
+                  />
+                  <Line type="monotone" dataKey="m13" stroke="#e67e22" strokeWidth={2} dot={false} name="M13 Systemic Overload" />
+                  <Line type="monotone" dataKey="m12" stroke="#2ecc71" strokeWidth={2} dot={false} name="M12 Psychological Safety" />
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="flex gap-4 mt-2 text-xs text-gray-400">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-[#e67e22]" /> M13 Systemic Overload</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-0.5 bg-[#2ecc71]" /> M12 Psychological Safety</div>
+              </div>
+              {hasSignal && (() => {
+                const m13pct = (snapshot.m13.value * 100).toFixed(0)
+                const m12val = snapshot.m12.value.toFixed(2)
+                const m12critical = snapshot.m12.value < 0.5
+                const m13severe = snapshot.m13.value > 0.5
+
+                const worstM12week = dualData.reduce((worst, d) =>
+                  d.m12 < (worst?.m12 ?? 999) ? d : worst, dualData[0])
+
+                return (
+                  <div className={`mt-3 p-3 rounded-lg flex items-start gap-2 border ${
+                    m12critical ? 'border-red-600/40 bg-red-900/20' : 'border-yellow-600/40 bg-yellow-900/20'
+                  }`}>
+                    <span className={`text-lg flex-shrink-0 ${m12critical ? 'text-red-400' : 'text-yellow-400'}`}></span>
+                    <div>
+                      <div className={`text-sm font-semibold mb-0.5 ${m12critical ? 'text-red-400' : 'text-yellow-400'}`}>
+                        {m12critical
+                          ? 'Критическое снижение психологической безопасности'
+                          : m13severe
+                          ? 'Высокая перегрузка совпадает со снижением культуры'
+                          : 'Перегрузка команды влияет на тон обсуждений'}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {m13pct}% активности команды происходит вне привычного рабочего ритма (M13 = {snapshot.m13.value.toFixed(2)}).
+                        {' '}Сигнал психологической безопасности — M12 = {m12val}
+                        {m12critical ? ' (ниже критического порога 0.5)' : ' (ниже нормы 0.7)'}.
+                        {worstM12week && worstM12week.m12 < 0.5 && (
+                          <> Худшая неделя — {worstM12week.week} (M12 = {worstM12week.m12.toFixed(2)}).</>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          </section>
+        )
+      })()}
+
       {(role === 'Tech Lead' || role === 'Admin') && (
         <section>
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-            M11 — Распределение покрытия ревью
+            M11 — Collaboration Friction Distribution
           </h2>
           <div className="bg-gray-900 rounded-xl p-4">
             {histBins.length < 4 ? (
-              <div className="h-40 flex items-center justify-center text-sm text-gray-600">
+              <div className="h-40 flex items-center justify-center text-sm text-gray-400">
                 Недостаточно данных
               </div>
             ) : (
@@ -267,13 +336,13 @@ export default function TeamPage() {
 
           {charts.team.m11_outliers.length > 0 && (
             <div className="mt-4">
-              <div className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
+              <div className="text-xs text-gray-400 mb-2 uppercase tracking-wide">
                 PR с CF {'>'} P90 — коммуникационные аутлаеры
               </div>
               <div className="bg-gray-900 rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-gray-500 text-xs border-b border-gray-800">
+                    <tr className="text-gray-400 text-xs border-b border-gray-800">
                       <th className="text-left px-4 py-2">PR</th>
                       <th className="text-left px-4 py-2">Заголовок</th>
                       <th className="text-right px-4 py-2">CF</th>

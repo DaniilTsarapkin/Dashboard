@@ -71,6 +71,7 @@ export function topProblems(
   ]
   if (snapshot.m10_available) candidates.push(['M10', snapshot.m10])
   return candidates
+    .filter(([, m]) => getSeverity(m) > 0)
     .sort((a, b) => getSeverity(b[1]) - getSeverity(a[1]))
     .slice(0, n)
 }

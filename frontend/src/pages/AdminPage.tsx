@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../store'
 import { getAdminStatus, saveAdminConfigOnly, saveAdminConfig, clearAdminConfig, getSnapshot } from '../api'
@@ -18,8 +18,45 @@ export default function AdminPage() {
   const [windowDays, setWindowDays] = useState(90)
   const [loadCommitFiles, setLoadCommitFiles] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [progressStage, setProgressStage] = useState('')
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
+
+  function startProgress() {
+    setProgress(0)
+    setProgressStage('Подключение к GitHub API...')
+    let pct = 0
+    const stages = [
+      { at: 5, text: 'Подключение к GitHub API...' },
+      { at: 15, text: 'Загрузка Pull Requests...' },
+      { at: 35, text: 'Загрузка timeline событий...' },
+      { at: 55, text: 'Загрузка Issues...' },
+      { at: 70, text: 'Загрузка базового периода...' },
+      { at: 85, text: 'Обработка данных...' },
+    ]
+    progressRef.current = setInterval(() => {
+      pct += Math.random() * 3 + 0.5
+      if (pct > 92) pct = 92
+      setProgress(pct)
+      const stage = [...stages].reverse().find(s => pct >= s.at)
+      if (stage) setProgressStage(stage.text)
+    }, 500)
+  }
+
+  function stopProgress(success: boolean) {
+    if (progressRef.current) clearInterval(progressRef.current)
+    progressRef.current = null
+    if (success) {
+      setProgress(100)
+      setProgressStage('Готово!')
+      setTimeout(() => setProgress(0), 1500)
+    } else {
+      setProgress(0)
+      setProgressStage('')
+    }
+  }
 
   useEffect(() => {
     getAdminStatus().then(s => {
@@ -87,13 +124,16 @@ export default function AdminPage() {
     }
 
     setSaving(true)
+    startProgress()
     try {
       const bundle = await saveAdminConfig(payload)
+      stopProgress(true)
       setBundle(bundle)
       setStatus({ configured: true, loaded: true, owner: v.owner, repo: v.repoName, window_days: windowDays })
       setSuccess(`Данные загружены: ${bundle.pr_count} PR, ${bundle.issue_count} issues`)
       getSnapshot(windowDays).then(setSnapshot).catch(() => {})
     } catch (e: any) {
+      stopProgress(false)
       setLocalError(`Конфигурация сохранена, но загрузка не удалась: ${e.message}`)
     } finally {
       setSaving(false)
@@ -157,7 +197,7 @@ export default function AdminPage() {
             className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-yellow-400"
           />
           {status?.configured && !token && (
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Токен хранится на сервере. Заполните только при смене токена.
             </p>
           )}
@@ -185,7 +225,7 @@ export default function AdminPage() {
             onChange={e => setWindowDays(Number(e.target.value))}
             className="w-full accent-yellow-400 cursor-pointer"
           />
-          <div className="flex justify-between text-xs text-gray-600 mt-0.5">
+          <div className="flex justify-between text-xs text-gray-400 mt-0.5">
             <span>1</span>
             <span>180</span>
           </div>
@@ -201,7 +241,7 @@ export default function AdminPage() {
           <span className="text-sm text-gray-400">
             Загружать данные коммитов для M07
           </span>
-          <span className="text-xs text-gray-600">(медленнее, расходует rate limit)</span>
+          <span className="text-xs text-gray-400">(медленнее, расходует rate limit)</span>
         </label>
 
         {localError && (
@@ -225,10 +265,14 @@ export default function AdminPage() {
           </button>
           <button
             onClick={handleLoad}
-            disabled={saving}
-            className="flex-1 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-900 font-bold rounded px-4 py-2 transition-colors"
+            disabled={saving || status?.loaded}
+            className={`flex-1 font-bold rounded px-4 py-2 transition-colors ${
+              status?.loaded && !saving
+                ? 'bg-gray-700 text-gray-400 cursor-default'
+                : 'bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-900'
+            }`}
           >
-            {saving ? 'Загрузка...' : 'Загрузить данные'}
+            {saving ? 'Загрузка...' : status?.loaded ? 'Данные загружены' : 'Загрузить данные'}
           </button>
           {status?.configured && (
             <button
@@ -241,10 +285,35 @@ export default function AdminPage() {
           )}
         </div>
 
-        {status?.loaded && (
+        {(saving || progress > 0) && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-300">{progressStage}</span>
+              <span className="text-yellow-400 font-medium">{Math.round(progress)}%</span>
+            </div>
+            <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${progress}%`,
+                  background: progress >= 100
+                    ? '#2ecc71'
+                    : 'linear-gradient(90deg, #f59e0b, #eab308)',
+                }}
+              />
+            </div>
+            {progress < 100 && (
+              <p className="text-xs text-gray-400">
+                Загрузка данных из GitHub API. Это может занять от 10 секунд до нескольких минут.
+              </p>
+            )}
+          </div>
+        )}
+
+        {status?.loaded && !saving && (
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-sm text-blue-400 hover:text-blue-300 text-center"
+            className="w-full bg-green-600 hover:bg-green-500 text-white font-bold rounded px-4 py-3 text-sm transition-colors"
           >
             Перейти к дашборду →
           </button>

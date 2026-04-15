@@ -19,7 +19,7 @@ function GapBadge({ hours }: { hours: number }) {
         className="text-xs px-3 py-0.5 rounded-full font-medium"
         style={{ background: color + '22', color, border: `1px solid ${color}44` }}
       >
-        ⏱ {label}
+        {label}
       </div>
     </div>
   )
@@ -36,8 +36,8 @@ function EventCard({ event }: { event: TimelineEvent }) {
   return (
     <div className="flex gap-3">
       <div className="flex flex-col items-center">
-        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-sm flex-shrink-0">
-          {event.icon}
+        <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-400 flex-shrink-0">
+          {event.type.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1 w-px bg-gray-800 mt-1" />
       </div>
@@ -46,7 +46,7 @@ function EventCard({ event }: { event: TimelineEvent }) {
           <div>
             <span className="text-xs font-semibold text-gray-300">{event.type}</span>
             {event.actor && (
-              <span className="text-xs text-gray-500 ml-2">@{event.actor}</span>
+              <span className="text-xs text-gray-400 ml-2">@{event.actor}</span>
             )}
             {event.detail && (
               <p className="text-xs text-gray-400 mt-0.5">{event.detail}</p>
@@ -102,7 +102,7 @@ export default function TimelinePage() {
     <div className="max-w-2xl">
       <button
         onClick={() => navigate(-1)}
-        className="text-sm text-gray-500 hover:text-gray-300 mb-4 flex items-center gap-1"
+        className="text-sm text-gray-400 hover:text-gray-300 mb-4 flex items-center gap-1"
       >
         ← Назад
       </button>
@@ -120,7 +120,7 @@ export default function TimelinePage() {
               </span>
             </div>
             <h1 className="text-base font-bold text-white">{pr.title}</h1>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-400 mt-1">
               @{pr.author} · {pr.changed_files} файлов
             </div>
           </div>

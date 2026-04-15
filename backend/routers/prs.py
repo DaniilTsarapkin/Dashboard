@@ -7,7 +7,7 @@ from backend.routers.data import get_current_bundle
 router = APIRouter()
 
 
-def _serialize_event(ev, ref_tz=None) -> dict | None:
+def _serialize_event(ev, ref_tz=None, pr_is_merged=False) -> dict | None:
     from src.data.models import (
         ClosedEvent, CommentEvent, CommitEvent, ConvertToDraftEvent,
         MergedEvent, ReadyForReviewEvent, ReopenedEvent, ReviewEvent, is_bot,
@@ -21,7 +21,7 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
             return None
         return {
             "time":   _ts(ev.committed_date),
-            "icon":   "📝",
+            "icon":   "",
             "type":   "Коммит",
             "actor":  ev.author_login,
             "detail": f"SHA: {ev.oid[:8] if ev.oid else '—'}",
@@ -32,15 +32,15 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
         if not ev.submitted_at:
             return None
         state_label = {
-            "APPROVED":          "✅ Одобрено",
-            "CHANGES_REQUESTED": "🔄 Запрошены правки",
-            "COMMENTED":         "💬 Комментарий к ревью",
-            "DISMISSED":         "❌ Отклонено",
+            "APPROVED":          "Одобрено",
+            "CHANGES_REQUESTED": "Запрошены правки",
+            "COMMENTED":         "Комментарий к ревью",
+            "DISMISSED":         "Отклонено",
         }.get(ev.state, ev.state)
         body = ev.body or ""
         return {
             "time":   _ts(ev.submitted_at),
-            "icon":   "👁",
+            "icon":   "",
             "type":   f"Ревью: {state_label}",
             "actor":  ev.author,
             "detail": (body[:80] + "…") if len(body) > 80 else body,
@@ -53,7 +53,7 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
         body = ev.body or ""
         return {
             "time":   _ts(ev.created_at),
-            "icon":   "💬",
+            "icon":   "",
             "type":   "Комментарий",
             "actor":  ev.author,
             "detail": (body[:80] + "…") if len(body) > 80 else body,
@@ -63,7 +63,7 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
     if isinstance(ev, ReadyForReviewEvent):
         return {
             "time":   _ts(ev.created_at),
-            "icon":   "🔔",
+            "icon":   "",
             "type":   "Переведён в Ready",
             "actor":  ev.actor,
             "detail": "Draft → Ready for review",
@@ -73,7 +73,7 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
     if isinstance(ev, ConvertToDraftEvent):
         return {
             "time":   _ts(ev.created_at),
-            "icon":   "📝",
+            "icon":   "",
             "type":   "Переведён в Draft",
             "actor":  ev.actor,
             "detail": "Ready → Draft",
@@ -83,7 +83,7 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
     if isinstance(ev, MergedEvent):
         return {
             "time":   _ts(ev.created_at),
-            "icon":   "🟣",
+            "icon":   "",
             "type":   "Смёрджен",
             "actor":  ev.actor,
             "detail": "PR принят и влит",
@@ -91,9 +91,11 @@ def _serialize_event(ev, ref_tz=None) -> dict | None:
         }
 
     if isinstance(ev, ClosedEvent):
+        if pr_is_merged:
+            return None
         return {
             "time":   _ts(ev.created_at),
-            "icon":   "🔴",
+            "icon":   "",
             "type":   "Закрыт",
             "actor":  ev.actor,
             "detail": "PR закрыт без мержа",
@@ -127,7 +129,7 @@ def get_pr_timeline(number: int):
     events: list[dict] = [
         {
             "time":   pr.request_time.isoformat() if pr.request_time else None,
-            "icon":   "🟢",
+            "icon":   "",
             "type":   "Готов к ревью" if pr.ready_for_review_at else "Создан",
             "actor":  pr.author,
             "detail": "PR стал доступен для ревью",
@@ -136,7 +138,7 @@ def get_pr_timeline(number: int):
     ]
 
     for ev in pr.timeline:
-        serialized = _serialize_event(ev)
+        serialized = _serialize_event(ev, pr_is_merged=pr.is_merged)
         if serialized:
             events.append(serialized)
 
@@ -146,7 +148,7 @@ def get_pr_timeline(number: int):
             dur_str = f" · {dur/3600:.1f}ч" if dur else ""
             events.append({
                 "time":   cr.started_at.isoformat(),
-                "icon":   "⚙️",
+                "icon":   "",
                 "type":   f"CI: {cr.name[:40]}",
                 "actor":  "github-actions",
                 "detail": f"Статус: {cr.conclusion or cr.status}{dur_str}",

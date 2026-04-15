@@ -61,6 +61,7 @@ def load(req: LoadRequest):
             "issue_count": len(_bundle.issues),
             "window_start": _bundle.window_start.isoformat(),
             "window_end": _bundle.window_end.isoformat(),
+            "commit_files_loaded": bool(_bundle.commit_files),
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -77,6 +78,7 @@ def get_bundle_info():
         "issue_count": len(_bundle.issues),
         "window_start": _bundle.window_start.isoformat(),
         "window_end": _bundle.window_end.isoformat(),
+        "commit_files_loaded": bool(_bundle.commit_files),
     }
 
 def get_current_bundle() -> DataBundle:

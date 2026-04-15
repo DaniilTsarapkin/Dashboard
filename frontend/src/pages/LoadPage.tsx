@@ -49,7 +49,7 @@ export default function LoadPage() {
   return (
     <div className="max-w-md mx-auto mt-20">
       <div className="text-center mb-8">
-        <span className="text-5xl">⚡</span>
+        <span className="text-5xl"></span>
         <h1 className="text-2xl font-bold mt-3">DX Dashboard</h1>
         <p className="text-gray-400 mt-1">Диагностика трения в процессах разработки</p>
       </div>
@@ -71,7 +71,7 @@ export default function LoadPage() {
                     <div className="font-medium text-gray-100 group-hover:text-yellow-400 transition-colors">
                       {label}
                     </div>
-                    <div className="text-xs text-gray-500">{description}</div>
+                    <div className="text-xs text-gray-400">{description}</div>
                   </div>
                   <span className="text-gray-600 group-hover:text-yellow-400 transition-colors">→</span>
                 </button>

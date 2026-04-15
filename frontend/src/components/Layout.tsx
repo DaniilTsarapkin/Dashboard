@@ -6,12 +6,13 @@ import RangeSlider from './RangeSlider'
 import type { Role } from '../types'
 
 const NAV_ITEMS: { path: string; label: string; roles: Role[] }[] = [
-  { path: '/dashboard',       label: '🏠 Главная',    roles: ['Developer', 'Tech Lead', 'Engineering Manager', 'Admin'] },
-  { path: '/dashboard/flow',  label: '⚡ Поток',      roles: ['Tech Lead', 'Engineering Manager', 'Admin'] },
-  { path: '/dashboard/load',  label: '🧠 Нагрузка',   roles: ['Developer', 'Tech Lead', 'Engineering Manager', 'Admin'] },
-  { path: '/dashboard/team',  label: '💬 Команда',    roles: ['Tech Lead', 'Engineering Manager', 'Admin'] },
-  { path: '/dashboard/risks', label: '🏢 Риски',      roles: ['Tech Lead', 'Engineering Manager', 'Admin'] },
-  { path: '/admin',           label: '⚙️ Настройки',  roles: ['Admin'] },
+  { path: '/dashboard',       label: 'Главная',    roles: ['Developer', 'Tech Lead', 'Engineering Manager', 'Admin'] },
+  { path: '/dashboard/flow',  label: 'Поток',      roles: ['Tech Lead', 'Engineering Manager', 'Admin'] },
+  { path: '/dashboard/load',  label: 'Нагрузка',   roles: ['Developer', 'Tech Lead', 'Engineering Manager', 'Admin'] },
+  { path: '/dashboard/team',  label: 'Команда',    roles: ['Tech Lead', 'Engineering Manager', 'Admin'] },
+  { path: '/dashboard/risks', label: 'Риски',      roles: ['Tech Lead', 'Engineering Manager', 'Admin'] },
+  { path: '/dashboard/reference', label: 'Справка',  roles: ['Developer', 'Tech Lead', 'Engineering Manager', 'Admin'] },
+  { path: '/admin',              label: 'Настройки',  roles: ['Admin'] },
 ]
 
 export default function Layout() {
@@ -68,7 +69,6 @@ export default function Layout() {
     <div className="h-screen bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
       <header className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-yellow-400 text-xl">⚡</span>
           <span className="font-bold text-lg">DX Dashboard</span>
           {bundle && (
             <span className="text-gray-400 text-sm ml-2">
@@ -116,7 +116,7 @@ export default function Layout() {
             {bundle && (
               <div className="px-3 pt-4 border-t border-gray-800 space-y-3">
                 <div>
-                  <div className="text-xs text-gray-500 mb-2">Период просмотра</div>
+                  <div className="text-xs text-gray-400 mb-2">Период просмотра</div>
                   <RangeSlider
                     min={0}
                     max={windowDays}
@@ -126,8 +126,8 @@ export default function Layout() {
                   />
                 </div>
                 <div>
-                  <div className="text-xs text-gray-600">PRs: {bundle.pr_count}</div>
-                  <div className="text-xs text-gray-600">Issues: {bundle.issue_count}</div>
+                  <div className="text-xs text-gray-400">PRs: {bundle.pr_count}</div>
+                  <div className="text-xs text-gray-400">Issues: {bundle.issue_count}</div>
                 </div>
               </div>
             )}

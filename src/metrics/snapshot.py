@@ -97,6 +97,49 @@ def _m02_per_pr(prs) -> list[float]:
     return [_blockage_hours_for_pr(pr) for pr in prs]
 
 
+def _m03_per_slot(prs, issues) -> list[float]:
+    from collections import defaultdict
+    from src.data.models import CommitEvent, CommentEvent, ReviewEvent, is_bot
+
+    def _evt_time(event):
+        for attr in ("submitted_at", "created_at", "committed_date"):
+            val = getattr(event, attr, None)
+            if val is not None:
+                return val
+        return None
+
+    contexts: dict[tuple[str, object], set[int]] = defaultdict(set)
+
+    for pr in prs:
+        for event in pr.timeline:
+            t = _evt_time(event)
+            if t is None:
+                continue
+            hour_slot = t.replace(minute=0, second=0, microsecond=0)
+            if isinstance(event, CommitEvent):
+                login = event.author_login
+                if login and not is_bot(login):
+                    contexts[(login, hour_slot)].add(pr.number)
+            elif isinstance(event, (ReviewEvent, CommentEvent)):
+                login = event.author
+                if login and not is_bot(login):
+                    contexts[(login, hour_slot)].add(pr.number)
+
+    for issue in issues:
+        for event in issue.timeline:
+            if not isinstance(event, CommentEvent):
+                continue
+            t = event.created_at
+            if t is None:
+                continue
+            login = event.author
+            if login and not is_bot(login):
+                hour_slot = t.replace(minute=0, second=0, microsecond=0)
+                contexts[(login, hour_slot)].add(issue.number)
+
+    return [len(ctxs) for ctxs in contexts.values()] if contexts else [1.0]
+
+
 def _m05_per_pr(prs) -> list[float]:
     vals = []
     for pr in prs:
@@ -235,6 +278,7 @@ def compute_snapshot(bundle: "DataBundle") -> MetricsSnapshot:
 
     d_m01 = _m01_per_pr(prs)
     d_m02 = _m02_per_pr(prs)
+    d_m03 = _m03_per_slot(prs, issues)
     d_m05 = _m05_per_pr(prs)
     d_m09 = _m09_per_item(prs, issues)
     d_m11 = _m11_per_pr(prs)
@@ -242,7 +286,7 @@ def compute_snapshot(bundle: "DataBundle") -> MetricsSnapshot:
     return MetricsSnapshot(
         m01=_make(cur_m01, d_m01, base_m01),
         m02=_make(cur_m02, d_m02, base_m02),
-        m03=_make(cur_m03, [cur_m03], base_m03),
+        m03=_make(cur_m03, d_m03, base_m03),
         m04=_make(cur_m04, [cur_m04], base_m04),
         m05=_make(cur_m05, d_m05, base_m05),
         m06=_make(cur_m06, [cur_m06], base_m06, inverse=True),

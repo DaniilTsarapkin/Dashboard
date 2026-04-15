@@ -10,7 +10,7 @@ import MetricCard from '../components/MetricCard'
 import EmptyState from '../components/EmptyState'
 
 export default function LoadMetricsPage() {
-  const { snapshot, charts, setCharts } = useDashboard()
+  const { snapshot, charts, setCharts, bundle } = useDashboard()
 
   useEffect(() => {
     if (!charts) getCharts().then(setCharts).catch(console.error)
@@ -38,26 +38,71 @@ export default function LoadMetricsPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6">🧠 Нагрузка — сложность и потери</h1>
+      <h1 className="text-xl font-bold mb-6">Нагрузка — сложность и потери</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         <MetricCard
-          label="M03 — Fragmentation Rate (Уровень фрагментации)"
+          label="M03 — Fragmentation Rate"
           value={snapshot.m03.value.toFixed(2)}
           metric={snapshot.m03}
           explanation={generateExplanation('M03', snapshot.m03)}
         />
         <MetricCard
-          label="M04 — Post-Interruption Recovery Cost (Цена восстановления)"
+          label="M04 — Post-Interruption Recovery Cost"
           value={formatHours(snapshot.m04.value)}
           metric={snapshot.m04}
           explanation={generateExplanation('M04', snapshot.m04)}
         />
       </div>
 
+      {(() => {
+        const fragHigh = snapshot.m03.value > 1.5
+        const recoveryExists = snapshot.m04.value > 0
+        const bothSignals = fragHigh && recoveryExists
+        const onlyFrag = fragHigh && !recoveryExists
+        const onlyRecovery = !fragHigh && recoveryExists && snapshot.m04.value > 1
+
+        if (!bothSignals && !onlyFrag && !onlyRecovery) return null
+
+        const fragVal = snapshot.m03.value.toFixed(1)
+        const recVal = formatHours(snapshot.m04.value)
+        const m07val = snapshot.m07.value
+
+        return (
+          <div className="mb-6 p-3 rounded-lg border border-yellow-600/40 bg-yellow-900/20 flex items-start gap-2">
+            <span className="text-yellow-400 text-lg flex-shrink-0"></span>
+            <div>
+              <div className="text-sm font-semibold text-yellow-400 mb-0.5">
+                {bothSignals
+                  ? 'Частые переключения контекста и высокая цена восстановления'
+                  : onlyFrag
+                  ? 'Высокая фрагментация рабочего времени'
+                  : 'Длительное восстановление после прерываний'}
+              </div>
+              <div className="text-xs text-gray-400">
+                {fragHigh && (
+                  <>Разработчики переключаются между {fragVal} контекстами в час (M03). </>
+                )}
+                {recoveryExists && (
+                  <>Возврат к своей задаче после прерывания занимает в среднем {recVal} (M04). </>
+                )}
+                {bothSignals && m07val > 0.1 && (
+                  <>Exploration Overhead = {(m07val * 100).toFixed(0)}% (M07) — разработчики теряют ориентацию
+                  в коде после переключений. </>
+                )}
+                {bothSignals && m07val <= 0.1 && (
+                  <>Несмотря на частые переключения, Exploration Overhead низкий (M07 = {(m07val * 100).toFixed(0)}%) —
+                  разработчики хорошо знают кодовую базу. </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M05 × M01 — Сложность PR vs Задержка обратной связи
+          M05 × M01 — Review Complexity vs Feedback Loop Latency
         </h2>
         <div className="bg-gray-900 rounded-xl p-4">
           <ResponsiveContainer width="100%" height={280}>
@@ -96,7 +141,7 @@ export default function LoadMetricsPage() {
               />
               <ReferenceArea x1={medRci} x2={maxRci} y1={medM01} y2={maxM01}
                 fill="#e74c3c" fillOpacity={0.12}
-                label={{ value: '⚠ Проблемная зона', position: 'insideTopRight', fill: '#e74c3c', fontSize: 11 }}
+                label={{ value: 'Проблемная зона', position: 'insideTopRight', fill: '#e74c3c', fontSize: 11 }}
               />
               <ReferenceArea x1={medRci} x2={maxRci} y1={0} y2={medM01}
                 fill="#e67e22" fillOpacity={0.07}
@@ -111,11 +156,36 @@ export default function LoadMetricsPage() {
             </ScatterChart>
           </ResponsiveContainer>
         </div>
+        {(() => {
+          if (scatter.length < 4) return null
+          const simple = scatter.filter(p => p.rci <= medRci)
+          const complex = scatter.filter(p => p.rci > medRci)
+          if (!simple.length || !complex.length) return null
+          const avgSimple = simple.reduce((s, p) => s + p.m01, 0) / simple.length
+          const avgComplex = complex.reduce((s, p) => s + p.m01, 0) / complex.length
+          const ratio = avgSimple > 0 ? avgComplex / avgSimple : 0
+          if (ratio <= 1.5) return null
+          return (
+            <div className="mt-3 p-3 rounded-lg border border-yellow-600/40 bg-yellow-900/20 flex items-start gap-2">
+              <span className="text-yellow-400 text-lg flex-shrink-0"></span>
+              <div>
+                <div className="text-sm font-semibold text-yellow-400 mb-0.5">
+                  Сложные PR ждут ответа в {ratio.toFixed(1)}× дольше
+                </div>
+                <div className="text-xs text-gray-400">
+                  {complex.length} PR с высокой сложностью (RCI {'>'} {medRci.toFixed(2)}) ждут первого ответа
+                  в среднем {formatHours(avgComplex)}. {simple.length} PR с низкой сложностью —
+                  в среднем {formatHours(avgSimple)}.
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       </section>
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M06 — Ясность требований (по неделям)
+          M06 — Requirements Clarity Score (weekly)
         </h2>
         <div className="bg-gray-900 rounded-xl p-4">
           <ResponsiveContainer width="100%" height={180}>
@@ -141,21 +211,20 @@ export default function LoadMetricsPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M07 — Exploration Overhead (Накладные расходы на исследование)
+          M07 — Exploration Overhead
         </h2>
-        {modules.length > 0 && modules.every(m => m.eo === 0) && (
+        {bundle && !bundle.commit_files_loaded && (
           <div className="mb-3 p-3 rounded-lg border border-gray-700 bg-gray-800/50 flex items-start gap-2">
-            <span className="text-gray-400 flex-shrink-0">ℹ️</span>
+            <span className="text-gray-400 flex-shrink-0"></span>
             <div className="text-xs text-gray-400">
-              Все значения EO равны нулю — данные промежуточных коммитов
-              не загружены. Для расчёта M07 включите опцию
-              «Загружать данные коммитов» при загрузке репозитория.
+              Данные промежуточных коммитов не загружены. Для расчёта M07
+              включите опцию «Загружать данные коммитов» в настройках.
             </div>
           </div>
         )}
         <div className="bg-gray-900 rounded-xl p-4 space-y-2">
           {modules.length === 0 ? (
-            <div className="text-gray-500 text-sm">Нет данных о файловых изменениях</div>
+            <div className="text-gray-400 text-sm">Нет данных о файловых изменениях</div>
           ) : (
             modules
               .slice()
@@ -169,7 +238,7 @@ export default function LoadMetricsPage() {
                       <span className="text-gray-300 font-mono truncate max-w-[260px]">{mod.module}</span>
                       <span className="text-gray-400 ml-4">
                         EO: <span style={{ color: eoColor }}>{mod.eo.toFixed(2)}</span>
-                        <span className="ml-3 text-gray-600">{mod.activity} PR</span>
+                        <span className="ml-3 text-gray-400">{mod.activity} PR</span>
                       </span>
                     </div>
                     <div className="h-2 bg-gray-800 rounded-full overflow-hidden">

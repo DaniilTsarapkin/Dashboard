@@ -50,6 +50,7 @@ export interface BundleInfo {
   issue_count: number
   window_start: string
   window_end: string
+  commit_files_loaded: boolean
 }
 
 export type Role = 'Developer' | 'Tech Lead' | 'Engineering Manager' | 'Admin'

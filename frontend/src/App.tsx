@@ -8,6 +8,7 @@ import TeamPage from './pages/TeamPage'
 import RisksPage from './pages/RisksPage'
 import TimelinePage from './pages/TimelinePage'
 import AdminPage from './pages/AdminPage'
+import MetricsReferencePage from './pages/MetricsReferencePage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="dashboard/risks" element={<RisksPage />} />
           <Route path="dashboard/timeline/:prNumber" element={<TimelinePage />} />
           <Route path="admin" element={<AdminPage />} />
+          <Route path="dashboard/reference" element={<MetricsReferencePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

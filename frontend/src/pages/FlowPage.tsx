@@ -80,7 +80,7 @@ export default function FlowPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-bold mb-6">⚡ Поток — жизненный цикл PR</h1>
+      <h1 className="text-xl font-bold mb-6">Поток — жизненный цикл PR</h1>
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
@@ -116,13 +116,13 @@ export default function FlowPage() {
 
       <div className="grid grid-cols-2 gap-4 mb-8">
         <MetricCard
-          label="M01 — Задержка обратной связи"
+          label="M01 — Feedback Loop Latency"
           value={formatHours(snapshot.m01.value)}
           metric={snapshot.m01}
           explanation={generateExplanation('M01', snapshot.m01)}
         />
         <MetricCard
-          label="M02 — Время блокировки"
+          label="M02 — Process Blockage Time"
           value={formatHours(snapshot.m02.value)}
           metric={snapshot.m02}
           explanation={generateExplanation('M02', snapshot.m02)}
@@ -135,15 +135,15 @@ export default function FlowPage() {
         </h2>
         <div className="grid grid-cols-2 gap-4">
           {[
-            { data: m01_hist, label: 'M01 — Распределение задержки обратной связи' },
-            { data: m02_hist, label: 'M02 — Распределение времени блокировки' },
+            { data: m01_hist, label: 'M01 — Feedback Loop Latency Distribution' },
+            { data: m02_hist, label: 'M02 — Process Blockage Time Distribution' },
           ].map(({ data, label }) => {
             const bins = buildHistBins(data, 20)
             if (bins.length < 4) {
               return (
                 <div key={label} className="bg-gray-900 rounded-xl p-4">
                   <div className="text-xs text-gray-400 mb-2">{label}</div>
-                  <div className="h-40 flex items-center justify-center text-sm text-gray-600">
+                  <div className="h-40 flex items-center justify-center text-sm text-gray-400">
                     Недостаточно данных
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export default function FlowPage() {
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          M08 — Безопасность среды (по неделям)
+          M08 — Environment Safety Score (weekly)
         </h2>
         <div className="bg-gray-900 rounded-xl p-4">
           <ResponsiveContainer width="100%" height={200}>
@@ -226,13 +226,13 @@ export default function FlowPage() {
           </h2>
           {outliers.length === 0 ? (
             <div className="bg-gray-900 rounded-xl p-4 text-green-400 text-sm">
-              ✅ Нет аутлаеров — всё в норме!
+              Нет аутлаеров — всё в норме!
             </div>
           ) : (
             <div className="bg-gray-900 rounded-xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-500 text-xs border-b border-gray-800">
+                  <tr className="text-gray-400 text-xs border-b border-gray-800">
                     <th className="text-left px-4 py-2">PR</th>
                     <th className="text-left px-4 py-2">Заголовок</th>
                     <th className="text-left px-4 py-2">Дата</th>
@@ -257,7 +257,7 @@ export default function FlowPage() {
                         </a>
                       </td>
                       <td className="px-4 py-2 text-gray-300 max-w-xs truncate">{row.title}</td>
-                      <td className="px-4 py-2 text-gray-500 text-xs">{row.created_at}</td>
+                      <td className="px-4 py-2 text-gray-400 text-xs">{row.created_at}</td>
                       <td className="px-4 py-2 text-right font-medium">
                         <span style={{ color: valueColor(row.m01, snapshot.m01.p50, snapshot.m01.p75, snapshot.m01.p90) }}>
                           {row.m01}
