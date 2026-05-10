@@ -69,14 +69,35 @@ export function topProblems(
     ['M07', snapshot.m07], ['M08', snapshot.m08], ['M09', snapshot.m09],
     ['M11', snapshot.m11], ['M12', snapshot.m12],
   ]
-  if (snapshot.m10_available) candidates.push(['M10', snapshot.m10])
+  if (snapshot.m10_available && snapshot.m10.value >= 0.1) candidates.push(['M10', snapshot.m10])
+
+  function isNotNormal(m: MetricResult): boolean {
+    const s = metricStatus(m)
+    return s.label !== 'В норме'
+  }
+
+  function sortScore(m: MetricResult): number {
+    const sev = getSeverity(m)
+    if (sev > 0) return 1000 + sev
+    if (m.inverse) return m.value < 0.7 ? 100 + (0.7 - m.value) : 0
+    return m.value > m.p50 ? 100 + (m.value - m.p50) / (m.p75 - m.p50 + 1e-9) : 0
+  }
+
   return candidates
-    .filter(([, m]) => getSeverity(m) > 0)
-    .sort((a, b) => getSeverity(b[1]) - getSeverity(a[1]))
+    .filter(([, m]) => isNotNormal(m))
+    .sort((a, b) => sortScore(b[1]) - sortScore(a[1]))
     .slice(0, n)
 }
 
 export function formatHours(h: number): string {
+  if (h < 1 / 60) {
+    const sec = Math.round(h * 3600)
+    return sec === 0 ? '0 сек' : `${sec} сек`
+  }
+  if (h < 1) {
+    const min = Math.round(h * 60)
+    return `${min} мин`
+  }
   if (h < 24) return `${h.toFixed(1)} ч`
   const days = Math.floor(h / 24)
   const rem  = Math.round(h % 24)
@@ -84,12 +105,15 @@ export function formatHours(h: number): string {
 }
 
 export function formatPct(v: number): string {
-  return `${(v * 100).toFixed(1)}%`
+  const pct = v * 100
+  if (pct > 0 && pct < 1) return `${pct.toFixed(2)}%`
+  if (pct > 0 && pct < 10) return `${pct.toFixed(1)}%`
+  return `${pct.toFixed(0)}%`
 }
 
 export function formatMetric(id: string, value: number): string {
   if (['M01', 'M02', 'M04', 'M10'].includes(id)) return formatHours(value)
-  if (id === 'M09') return formatPct(value)
+  if (['M07', 'M09', 'M13', 'M14'].includes(id)) return formatPct(value)
   return value.toFixed(2)
 }
 
@@ -101,9 +125,15 @@ export function generateExplanation(id: string, m: MetricResult): string {
   const trendPct = m.base_value !== 0
     ? ((m.value - m.base_value) / Math.abs(m.base_value) * 100)
     : 0
+  const absDelta = m.value - m.base_value
+  const absDeltaStr = absDelta === 0
+    ? ''
+    : `${absDelta > 0 ? '+' : '−'}${formatMetric(id, Math.abs(absDelta))}`
   const trendStr = trendPct === 0
     ? 'стабильно'
-    : `${trendPct > 0 ? '+' : ''}${trendPct.toFixed(0)}%`
+    : absDeltaStr
+      ? `${trendPct > 0 ? '+' : ''}${trendPct.toFixed(0)}% (${absDeltaStr})`
+      : `${trendPct > 0 ? '+' : ''}${trendPct.toFixed(0)}%`
 
   const status = m.inverse
     ? (m.value >= 0.7 ? 'в норме' : m.value >= 0.5 ? 'требует внимания' : 'тревожная зона')

@@ -7,6 +7,21 @@ import MetricCard from '../components/MetricCard'
 import Sparkline from '../components/Sparkline'
 import EmptyState from '../components/EmptyState'
 
+const METRIC_ROUTES: Record<string, { path: string; scrollTo: string }> = {
+  M01: { path: '/dashboard/flow', scrollTo: 'm01' },
+  M02: { path: '/dashboard/flow', scrollTo: 'm02' },
+  M03: { path: '/dashboard/load', scrollTo: 'm03' },
+  M04: { path: '/dashboard/load', scrollTo: 'm04' },
+  M05: { path: '/dashboard/load', scrollTo: 'm05' },
+  M06: { path: '/dashboard/team', scrollTo: 'm06' },
+  M07: { path: '/dashboard/load', scrollTo: 'm07' },
+  M08: { path: '/dashboard/flow', scrollTo: 'm08' },
+  M09: { path: '/dashboard/team', scrollTo: 'm09' },
+  M10: { path: '/dashboard/flow', scrollTo: 'm10' },
+  M11: { path: '/dashboard/team', scrollTo: 'm11' },
+  M12: { path: '/dashboard/team', scrollTo: 'm12' },
+}
+
 const GROUP_META = [
   { id: 1, icon: '', name: 'Поток и трение',       path: '/dashboard/flow' },
   { id: 2, icon: '', name: 'Когнитивная нагрузка', path: '/dashboard/load' },
@@ -74,15 +89,23 @@ export default function HomePage() {
               Все метрики в норме
             </div>
           ) : (
-            topProblems(snapshot, 3).map(([id, m]) => (
-              <MetricCard
-                key={id}
-                label={id}
-                value={formatMetric(id, m.value)}
-                metric={m}
-                explanation={generateExplanation(id, m)}
-              />
-            ))
+            topProblems(snapshot, 3).map(([id, m]) => {
+              const route = METRIC_ROUTES[id]
+              return (
+                <div
+                  key={id}
+                  onClick={() => route && navigate(route.path, { state: { scrollTo: route.scrollTo } })}
+                  className={route ? 'cursor-pointer' : ''}
+                >
+                  <MetricCard
+                    label={id}
+                    value={formatMetric(id, m.value)}
+                    metric={m}
+                    explanation={generateExplanation(id, m)}
+                  />
+                </div>
+              )
+            })
           )}
         </div>
 

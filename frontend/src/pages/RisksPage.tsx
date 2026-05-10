@@ -28,8 +28,8 @@ export default function RisksPage() {
 
   const funnelSteps = [
     { label: 'Все новые участники', value: m15_funnel.step1 },
-    { label: 'Первый вклад', value: m15_funnel.step2 },
-    { label: 'Первое ревью', value: m15_funnel.step3 },
+    { label: 'Получили обратную связь', value: m15_funnel.step2 },
+    { label: 'Первый принятый PR', value: m15_funnel.step3 },
   ]
   const maxStep = funnelSteps[0].value || 1
 

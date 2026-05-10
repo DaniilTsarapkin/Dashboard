@@ -98,6 +98,7 @@ def infrastructure_wait_time(prs: list[PullRequest]) -> Optional[float]:
         qualifying = [
             cr for cr in pr.check_runs
             if cr.required
+            and cr.status == "COMPLETED"
             and cr.started_at is not None
             and cr.completed_at is not None
             and (cr.completed_at - cr.started_at).total_seconds() > 0

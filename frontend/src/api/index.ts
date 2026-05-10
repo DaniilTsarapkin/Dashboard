@@ -94,16 +94,23 @@ export async function saveAdminConfig(data: {
   window_days: number; admin_password: string;
   load_commit_files?: boolean
 }): Promise<BundleInfo> {
-  const res = await fetch(`${BASE}/admin/config`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.detail || 'Ошибка сохранения конфигурации')
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30 * 60 * 1000)
+  try {
+    const res = await fetch(`${BASE}/admin/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: controller.signal,
+    })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.detail || 'Ошибка сохранения конфигурации')
+    }
+    return res.json()
+  } finally {
+    clearTimeout(timeout)
   }
-  return res.json()
 }
 
 export async function clearAdminConfig(admin_password: string): Promise<void> {
@@ -116,4 +123,17 @@ export async function clearAdminConfig(admin_password: string): Promise<void> {
     const err = await res.json()
     throw new Error(err.detail || 'Ошибка очистки конфигурации')
   }
+}
+
+export async function loadDemoData(admin_password: string): Promise<BundleInfo> {
+  const res = await fetch(`${BASE}/admin/demo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ admin_password }),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.detail || 'Ошибка загрузки демо-данных')
+  }
+  return res.json()
 }

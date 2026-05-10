@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 from statistics import median, quantiles
 from typing import Optional
 
+from src.data.models import is_bot
+
 
 
 
@@ -257,7 +259,8 @@ def compute_snapshot(bundle: "DataBundle") -> MetricsSnapshot:
     cur_m12 = psychological_safety_signal(prs, issues)
     cur_m13 = systemic_overload_index(base_prs, base_issues, prs, issues)
     cur_m14 = knowledge_concentration_risk(prs)
-    cur_m15_days, cur_m15_n = onboarding_efficiency(prs, since=bundle.window_start)
+    base_authors = {pr.author for pr in base_prs if not is_bot(pr.author)}
+    cur_m15_days, cur_m15_n = onboarding_efficiency(prs, since=bundle.window_start, exclude=base_authors)
     cur_m16 = cost_of_process_waste(prs, issues)
 
     base_m01 = feedback_loop_latency(base_prs)

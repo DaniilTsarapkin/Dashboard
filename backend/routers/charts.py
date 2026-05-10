@@ -64,6 +64,13 @@ def get_all_charts(from_days: Optional[int] = None, to_days: Optional[int] = Non
             iso = anchor.isocalendar()
             weekly_map[(iso.year, iso.week)].append(pr)
 
+    weekly_issues_map: dict[tuple[int, int], list] = defaultdict(list)
+    for iss in issues:
+        anchor = iss.updated_at or iss.created_at
+        if anchor:
+            iso = anchor.isocalendar()
+            weekly_issues_map[(iso.year, iso.week)].append(iss)
+
     weeks      = sorted(weekly_map.keys())
     week_labels = [f"{y}-W{w:02d}" for y, w in weeks]
 
@@ -77,7 +84,10 @@ def get_all_charts(from_days: Optional[int] = None, to_days: Optional[int] = Non
         "m09": [rework_rate(weekly_map[k], issues) for k in weeks],
         "m12": [psychological_safety_signal(weekly_map[k], issues) for k in weeks],
         "m13": [
-            systemic_overload_index(base_prs, base_issues, weekly_map[k], issues)
+            systemic_overload_index(
+                base_prs, base_issues,
+                weekly_map[k], weekly_issues_map.get(k, []),
+            )
             for k in weeks
         ],
         "m16": [
@@ -195,6 +205,8 @@ def get_all_charts(from_days: Optional[int] = None, to_days: Optional[int] = Non
 
     module_author_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for pr in prs:
+        if is_bot(pr.author):
+            continue
         for mod in {f.directory for f in pr.files}:
             module_author_counts[mod][pr.author] += 1
 
@@ -270,7 +282,8 @@ def get_all_charts(from_days: Optional[int] = None, to_days: Optional[int] = Non
                     if pr.author not in earliest or tc < earliest[pr.author]:
                         earliest[pr.author] = tc
 
-        new_authors = {login for login, t in earliest.items() if t >= window_start}
+        base_authors = {pr.author for pr in base_prs if not is_bot(pr.author)}
+        new_authors = {login for login in earliest if login not in base_authors}
         step1 = len(new_authors)
 
         received_feedback: set[str] = set()
@@ -285,7 +298,7 @@ def get_all_charts(from_days: Optional[int] = None, to_days: Optional[int] = Non
         step2 = len(received_feedback)
 
         from src.metrics.group5_org import onboarding_efficiency
-        onboarding_days, step3 = onboarding_efficiency(prs, since=window_start)
+        onboarding_days, step3 = onboarding_efficiency(prs, since=window_start, exclude=base_authors)
 
     theta = 0.6
     m14_modules = sorted(
@@ -310,6 +323,7 @@ def get_all_charts(from_days: Optional[int] = None, to_days: Optional[int] = Non
             "lifecycle": lifecycle,
             "m01_hist":  m01_hist,
             "m02_hist":  m02_hist,
+            "m10_hist":  [v for v in m10_vals if v is not None],
             "outliers":  outliers,
         },
         "load": {

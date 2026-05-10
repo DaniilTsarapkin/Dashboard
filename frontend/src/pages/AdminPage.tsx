@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../store'
-import { getAdminStatus, saveAdminConfigOnly, saveAdminConfig, clearAdminConfig, getSnapshot } from '../api'
+import { getAdminStatus, saveAdminConfigOnly, saveAdminConfig, clearAdminConfig, loadDemoData, getSnapshot } from '../api'
 import type { AdminStatus } from '../types'
 
 export default function AdminPage() {
@@ -265,14 +265,10 @@ export default function AdminPage() {
           </button>
           <button
             onClick={handleLoad}
-            disabled={saving || status?.loaded}
-            className={`flex-1 font-bold rounded px-4 py-2 transition-colors ${
-              status?.loaded && !saving
-                ? 'bg-gray-700 text-gray-400 cursor-default'
-                : 'bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-900'
-            }`}
+            disabled={saving}
+            className="flex-1 font-bold rounded px-4 py-2 transition-colors bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-900"
           >
-            {saving ? 'Загрузка...' : status?.loaded ? 'Данные загружены' : 'Загрузить данные'}
+            {saving ? 'Загрузка...' : status?.loaded ? 'Перезагрузить данные' : 'Загрузить данные'}
           </button>
           {status?.configured && (
             <button
@@ -318,6 +314,43 @@ export default function AdminPage() {
             Перейти к дашборду →
           </button>
         )}
+      </div>
+
+      <div className="bg-gray-900 rounded-xl p-6 mt-6">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+          Демо-данные
+        </h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Загрузить тестовый набор данных для демонстрации всех возможностей дашборда.
+          Данные содержат 66 PR, 21 Issue с различными сценариями.
+        </p>
+        <button
+          onClick={async () => {
+            setLocalError(null)
+            setSuccess(null)
+            setSaving(true)
+            startProgress()
+            try {
+              const bundle = await loadDemoData(authPassword)
+              stopProgress(true)
+              setBundle(bundle)
+              setStoreWindowDays(90)
+              setViewRange(90, 0)
+              setStatus({ configured: true, loaded: true, owner: bundle.owner, repo: bundle.repo, window_days: 90 })
+              setSuccess(`Демо-данные загружены: ${bundle.pr_count} PR, ${bundle.issue_count} issues`)
+              getSnapshot(90).then(setSnapshot).catch(() => {})
+            } catch (e: any) {
+              stopProgress(false)
+              setLocalError(e.message)
+            } finally {
+              setSaving(false)
+            }
+          }}
+          disabled={saving}
+          className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold rounded px-4 py-2 text-sm transition-colors"
+        >
+          {saving ? 'Загрузка...' : 'Загрузить демо-данные'}
+        </button>
       </div>
     </div>
   )

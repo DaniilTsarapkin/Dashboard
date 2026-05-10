@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, ReferenceLine, ReferenceArea, CartesianGrid,
@@ -15,8 +15,9 @@ function buildHistBins(vals: number[], nbins = 20): { bin: string; binNum: numbe
   const min = Math.min(...vals)
   const max = Math.max(...vals)
   const step = (max - min) / nbins || 1
+  const decimals = step >= 1 ? 0 : step >= 0.1 ? 1 : step >= 0.01 ? 2 : 3
   const bins = Array.from({ length: nbins }, (_, i) => ({
-    bin: `${(min + i * step).toFixed(1)}`,
+    bin: `${(min + i * step).toFixed(decimals)}`,
     binNum: min + i * step,
     count: 0,
   }))
@@ -53,16 +54,23 @@ function valueColor(value: number, p50: number, p75: number, p90: number): strin
 export default function FlowPage() {
   const { snapshot, charts, setCharts, role, bundle } = useDashboard()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (!charts) getCharts().then(setCharts).catch(console.error)
   }, [charts, setCharts])
 
+  useEffect(() => {
+    const target = (location.state as any)?.scrollTo
+    if (!target || !snapshot || !charts) return
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [snapshot, charts])
+
   if (!snapshot || !charts) {
     return <EmptyState />
   }
 
-  const { lifecycle, m01_hist, m02_hist, outliers } = charts.flow
+  const { lifecycle, m01_hist, m02_hist, m10_hist, outliers } = charts.flow
   const weekly = charts.weekly
 
   const lifecycleData = [
@@ -114,29 +122,46 @@ export default function FlowPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <MetricCard
-          label="M01 — Feedback Loop Latency"
-          value={formatHours(snapshot.m01.value)}
-          metric={snapshot.m01}
-          explanation={generateExplanation('M01', snapshot.m01)}
-        />
-        <MetricCard
-          label="M02 — Process Blockage Time"
-          value={formatHours(snapshot.m02.value)}
-          metric={snapshot.m02}
-          explanation={generateExplanation('M02', snapshot.m02)}
-        />
+      <div className={`grid ${snapshot.m10_available ? 'grid-cols-3' : 'grid-cols-2'} gap-4 mb-8`}>
+        <div id="m01">
+          <MetricCard
+            label="M01 — Feedback Loop Latency"
+            value={formatHours(snapshot.m01.value)}
+            metric={snapshot.m01}
+            explanation={generateExplanation('M01', snapshot.m01)}
+          />
+        </div>
+        <div id="m02">
+          <MetricCard
+            label="M02 — Process Blockage Time"
+            value={formatHours(snapshot.m02.value)}
+            metric={snapshot.m02}
+            explanation={generateExplanation('M02', snapshot.m02)}
+          />
+        </div>
+        {snapshot.m10_available && (
+          <div id="m10">
+            <MetricCard
+              label="M10 — CI Wait Time"
+              value={formatHours(snapshot.m10.value)}
+              metric={snapshot.m10}
+              explanation={generateExplanation('M10', snapshot.m10)}
+            />
+          </div>
+        )}
       </div>
 
       <section className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
-          Распределения M01 и M02
+          Распределения M01, M02{snapshot.m10_available ? ' и M10' : ''}
         </h2>
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`grid ${snapshot.m10_available ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
           {[
             { data: m01_hist, label: 'M01 — Feedback Loop Latency Distribution' },
             { data: m02_hist, label: 'M02 — Process Blockage Time Distribution' },
+            ...(snapshot.m10_available
+              ? [{ data: m10_hist, label: 'M10 — CI Wait Time Distribution' }]
+              : []),
           ].map(({ data, label }) => {
             const bins = buildHistBins(data, 20)
             if (bins.length < 4) {
@@ -197,7 +222,7 @@ export default function FlowPage() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section id="m08" className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           M08 — Environment Safety Score (weekly)
         </h2>

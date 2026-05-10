@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
   ReferenceLine, ReferenceArea, ResponsiveContainer,
@@ -46,11 +46,18 @@ function closestBin(bins: { bin: string; binNum: number }[], value: number): str
 
 export default function TeamPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { snapshot, charts, setCharts, role, bundle } = useDashboard()
 
   useEffect(() => {
     if (!charts) getCharts().then(setCharts).catch(console.error)
   }, [charts, setCharts])
+
+  useEffect(() => {
+    const target = (location.state as any)?.scrollTo
+    if (!target || !snapshot || !charts) return
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [snapshot, charts])
 
   if (!snapshot || !charts) {
     return <EmptyState />
@@ -87,18 +94,22 @@ export default function TeamPage() {
       <h1 className="text-xl font-bold mb-6">Команда — взаимодействие</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <MetricCard
-          label="M09 — Rework Rate"
-          value={formatPct(snapshot.m09.value)}
-          metric={snapshot.m09}
-          explanation={generateExplanation('M09', snapshot.m09)}
-        />
-        <MetricCard
-          label="M06 — Requirements Clarity Score"
-          value={snapshot.m06.value.toFixed(2)}
-          metric={snapshot.m06}
-          explanation={generateExplanation('M06', snapshot.m06)}
-        />
+        <div id="m09">
+          <MetricCard
+            label="M09 — Rework Rate"
+            value={formatPct(snapshot.m09.value)}
+            metric={snapshot.m09}
+            explanation={generateExplanation('M09', snapshot.m09)}
+          />
+        </div>
+        <div id="m06">
+          <MetricCard
+            label="M06 — Requirements Clarity Score"
+            value={snapshot.m06.value.toFixed(2)}
+            metric={snapshot.m06}
+            explanation={generateExplanation('M06', snapshot.m06)}
+          />
+        </div>
       </div>
 
       {snapshot.m09.value > 0.15 && snapshot.m06.value < 0.5 && (
@@ -172,7 +183,7 @@ export default function TeamPage() {
         </div>
       </section>
 
-      <section className="mb-8">
+      <section id="m12" className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           M12 — Psychological Safety Signal (weekly)
         </h2>
@@ -291,7 +302,7 @@ export default function TeamPage() {
       })()}
 
       {(role === 'Tech Lead' || role === 'Admin') && (
-        <section>
+        <section id="m11">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
             M11 — Collaboration Friction Distribution
           </h2>

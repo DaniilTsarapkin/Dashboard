@@ -23,8 +23,13 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mainRef = useRef<HTMLElement>(null)
 
   const isOnDashboard = location.pathname.startsWith('/dashboard') || location.pathname === '/admin'
+
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0
+  }, [location.pathname])
 
   useEffect(() => {
     if (bundle) return
@@ -134,7 +139,7 @@ export default function Layout() {
           </nav>
         )}
 
-        <main className="flex-1 overflow-auto p-6">
+        <main ref={mainRef} className="flex-1 overflow-auto p-6">
           <Outlet />
         </main>
       </div>

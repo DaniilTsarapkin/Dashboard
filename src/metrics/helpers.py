@@ -32,6 +32,7 @@ def _pr_m10(pr: PullRequest) -> float:
     qualifying = [
         cr for cr in pr.check_runs
         if cr.required
+        and cr.status == "COMPLETED"
         and cr.started_at is not None
         and cr.completed_at is not None
         and (cr.completed_at - cr.started_at).total_seconds() > 0

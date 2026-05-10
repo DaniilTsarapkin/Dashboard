@@ -153,6 +153,8 @@ def knowledge_concentration_risk(
     module_author_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     for pr in prs:
+        if is_bot(pr.author):
+            continue
         touched_modules: set[str] = set()
         for f in pr.files:
             touched_modules.add(f.directory)
@@ -177,6 +179,7 @@ def knowledge_concentration_risk(
 def onboarding_efficiency(
     prs: list[PullRequest],
     since: datetime,
+    exclude: set[str] | None = None,
 ) -> tuple[float, int]:
     earliest_event: dict[str, datetime] = {}
 
@@ -190,6 +193,8 @@ def onboarding_efficiency(
     new_participants: set[str] = {
         login for login, t in earliest_event.items() if t >= since
     }
+    if exclude:
+        new_participants -= exclude
 
     if not new_participants:
         return (0.0, 0)
@@ -250,6 +255,7 @@ def cost_of_process_waste(
         qualifying = [
             cr for cr in pr.check_runs
             if cr.required
+            and cr.status == "COMPLETED"
             and cr.started_at is not None
             and cr.completed_at is not None
         ]

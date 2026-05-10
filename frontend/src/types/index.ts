@@ -143,6 +143,7 @@ export interface ChartsData {
     lifecycle: LifecycleData
     m01_hist: number[]
     m02_hist: number[]
+    m10_hist: number[]
     outliers: PROutlier[]
   }
   load: {

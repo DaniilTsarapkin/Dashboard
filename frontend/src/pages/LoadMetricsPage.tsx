@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, ReferenceLine, ReferenceArea,
@@ -11,10 +12,17 @@ import EmptyState from '../components/EmptyState'
 
 export default function LoadMetricsPage() {
   const { snapshot, charts, setCharts, bundle } = useDashboard()
+  const location = useLocation()
 
   useEffect(() => {
     if (!charts) getCharts().then(setCharts).catch(console.error)
   }, [charts, setCharts])
+
+  useEffect(() => {
+    const target = (location.state as any)?.scrollTo
+    if (!target || !snapshot || !charts) return
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [snapshot, charts])
 
   if (!snapshot || !charts) {
     return <EmptyState />
@@ -41,18 +49,22 @@ export default function LoadMetricsPage() {
       <h1 className="text-xl font-bold mb-6">Нагрузка — сложность и потери</h1>
 
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <MetricCard
-          label="M03 — Fragmentation Rate"
-          value={snapshot.m03.value.toFixed(2)}
-          metric={snapshot.m03}
-          explanation={generateExplanation('M03', snapshot.m03)}
-        />
-        <MetricCard
-          label="M04 — Post-Interruption Recovery Cost"
-          value={formatHours(snapshot.m04.value)}
-          metric={snapshot.m04}
-          explanation={generateExplanation('M04', snapshot.m04)}
-        />
+        <div id="m03">
+          <MetricCard
+            label="M03 — Fragmentation Rate"
+            value={snapshot.m03.value.toFixed(2)}
+            metric={snapshot.m03}
+            explanation={generateExplanation('M03', snapshot.m03)}
+          />
+        </div>
+        <div id="m04">
+          <MetricCard
+            label="M04 — Post-Interruption Recovery Cost"
+            value={formatHours(snapshot.m04.value)}
+            metric={snapshot.m04}
+            explanation={generateExplanation('M04', snapshot.m04)}
+          />
+        </div>
       </div>
 
       {(() => {
@@ -100,7 +112,7 @@ export default function LoadMetricsPage() {
         )
       })()}
 
-      <section className="mb-8">
+      <section id="m05" className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           M05 × M01 — Review Complexity vs Feedback Loop Latency
         </h2>
@@ -183,7 +195,7 @@ export default function LoadMetricsPage() {
         })()}
       </section>
 
-      <section className="mb-8">
+      <section id="m06" className="mb-8">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           M06 — Requirements Clarity Score (weekly)
         </h2>
@@ -209,7 +221,7 @@ export default function LoadMetricsPage() {
         </div>
       </section>
 
-      <section>
+      <section id="m07">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           M07 — Exploration Overhead
         </h2>
@@ -231,7 +243,10 @@ export default function LoadMetricsPage() {
               .sort((a, b) => b.eo - a.eo)
               .map(mod => {
                 const barPct = (mod.activity / maxActivity) * 100
-                const eoColor = mod.eo > 0.7 ? '#e74c3c' : mod.eo > 0.5 ? '#f1c40f' : '#2ecc71'
+                const eoColor = mod.eo > snapshot.m07.p90 ? '#e74c3c'
+                  : mod.eo > snapshot.m07.p75 ? '#e67e22'
+                  : mod.eo > snapshot.m07.p50 ? '#f1c40f'
+                  : '#2ecc71'
                 return (
                   <div key={mod.module}>
                     <div className="flex justify-between text-xs mb-0.5">
